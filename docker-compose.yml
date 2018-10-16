@@ -1,0 +1,32 @@
+# sameas
+# $ docker network create rosnet
+# $ docker run -it --rm --net rosnet --name master ros:ros-tutorials roscore
+# $ docker run -it --rm --net rosnet --name talker --env ROS_HOSTNAME=talker --env ROS_MASTER_URI=http://master:11311 ros:ros-tutorials rosrun roscpp_tutorials talker
+# $ docker run -it --rm --net rosnet --name listener --env ROS_HOSTNAME=listener --env ROS_MASTER_URI=http://master:11311 ros:ros-tutorials rosrun roscpp_tutorials listener
+# to run
+# $ docker-compose up
+version: '2'
+services:
+  master:
+    build: .
+    container_name: master
+    command:
+      - roscore
+  talker:
+    build: .
+    container_name: talker
+    depends_on:
+      - "master"
+    environment:
+      - "ROS_HOSTNAME=talker"
+      - "ROS_MASTER_URI=http://master:11311"
+    command: rosrun roscpp_tutorials talker
+  listener:
+    build: .
+    container_name: listener
+    depends_on:
+      - "master"
+    environment:
+      - "ROS_HOSTNAME=listener"
+      - "ROS_MASTER_URI=http://master:11311"
+    command: rosrun roscpp_tutorials listener
