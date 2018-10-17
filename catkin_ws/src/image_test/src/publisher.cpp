@@ -5,19 +5,23 @@
 #include <opencv2/highgui.hpp>
 #include <custom_messages/Num.h>
 #include <robotx_msgs/ObjectRegionOfInterestArray.h>
+#include <robotx_msgs/ObjectRegionOfInterest.h>
+#include <robotx_msgs/ObjectType.h>
 
 void cb(custom_messages::Num res){
-  ROS_INFO("%d", res.num);
+  /* ROS_INFO("%d", res.num); */
 }
 // http://blog-sk.com/ubuntu/ros_cvbridge/
 int main(int argc, char** argv) {
-	ros::init (argc, argv, "img_publisher");
+	ros::init (argc, argv, "publisher");
 	ros::NodeHandle nh("~");
-  custom_messages::Num x;
-  robotx_msgs::ObjectRegionOfInterestArray arr;
-  ros::Subscriber roi_sub = nh.subscribe("object_bbox_extractor_node/object_roi", 1, cb);
+  ROS_INFO("%s", ros::this_node::getName().c_str());
+
+  ros::Publisher roi_pub = nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("hogehoge", 1);
 	image_transport::ImageTransport it(nh);
-	image_transport::Publisher image_pub = it.advertise("wam_v/front_camera/front_image_raw", 1);
+	image_transport::Publisher image_pub = it.advertise("image", 1);
+
+  // 画像生成
 	cv::Mat image;
   image = cv::imread("/catkin_ws/src/hoge/data/00.png", 1);
   if(image.empty()) {
@@ -26,11 +30,25 @@ int main(int argc, char** argv) {
   }else{
     ROS_INFO("loaded");
   }
-	ros::Rate looprate(1);   // capture image at 10Hz
+  sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+
+  // roi生成
+  robotx_msgs::ObjectRegionOfInterestArray array;
+  robotx_msgs::ObjectRegionOfInterest roi;
+  roi.roi_2d.width = 50;
+  roi.roi_2d.height = 40;
+  roi.roi_2d.x_offset = 11;
+  roi.roi_2d.y_offset = 12;
+  roi.objectness = 0.9;
+  roi.object_type.ID = roi.object_type.GREEN_BUOY;
+  array.object_rois.push_back(roi);
+
+	ros::Rate looprate(0.1);   // capture image at 10Hz
 	while(ros::ok()) {
     ROS_INFO("published!");
-		sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+    roi_pub.publish(array);
 		image_pub.publish(msg);
+    ROS_INFO("%f", array.object_rois[0].objectness);
 		ros::spinOnce();
 		looprate.sleep();
 	}

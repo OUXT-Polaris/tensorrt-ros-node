@@ -31,3 +31,20 @@ run_listener:
 		/bin/bash -c ". devel/setup.bash; rosrun image_test detector"
 		# /bin/bash -c ". devel/setup.bash; rosmsg show hoge/Num"
 
+inspect:
+	docker run -it --rm \
+		--net rosnet --name debug \
+		--env ROS_HOSTNAME=debug \
+		--env ROS_MASTER_URI=http://master:11311 \
+		-v ~/src/OUXT/docker-test/node-making/catkin_ws:/catkin_ws \
+		ros:ros-node-making \
+		/bin/bash -c ". devel/setup.bash; rosnode info /publisher; rosnode info /hoge; rosnode info /detector"
+
+launch:
+	docker run -it --rm \
+		--net rosnet --name debug \
+		--env ROS_HOSTNAME=debug \
+		--env ROS_MASTER_URI=http://master:11311 \
+		-v ~/src/OUXT/docker-test/node-making/catkin_ws:/catkin_ws \
+		ros:ros-node-making \
+		/bin/bash -c ". devel/setup.bash; export HOGE=hoge; roslaunch image_test run.launch CUDA_ENABLED:=true"

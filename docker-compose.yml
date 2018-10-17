@@ -20,7 +20,9 @@ services:
     environment:
       - "ROS_HOSTNAME=talker"
       - "ROS_MASTER_URI=http://master:11311"
-    command: rosrun roscpp_tutorials talker
+    volumes:
+      - /Users/ryought/src/OUXT/docker-test/node-making/catkin_ws:/catkin_ws:ro
+    command: /bin/bash -c ". devel/setup.bash; rosrun image_test publisher"
   listener:
     build: .
     container_name: listener
@@ -29,4 +31,6 @@ services:
     environment:
       - "ROS_HOSTNAME=listener"
       - "ROS_MASTER_URI=http://master:11311"
-    command: rosrun roscpp_tutorials listener
+    volumes:
+      - /Users/ryought/src/OUXT/docker-test/node-making/catkin_ws:/catkin_ws:ro
+    command: /bin/bash -c ". devel/setup.bash; rosrun image_test detector"

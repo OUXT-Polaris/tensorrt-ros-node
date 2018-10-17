@@ -1,5 +1,3 @@
-#ifndef HSV_BUOY_DETECTOR_H_INCLUDED
-#define HSV_BUOY_DETECTOR_H_INCLUDED
 #include <robotx_msgs/ObjectRegionOfInterestArray.h>
 #include <robotx_msgs/ObjectRegionOfInterest.h>
 #include <ros/ros.h>
@@ -22,8 +20,16 @@ class cnn_predictor {
     ros::Subscriber _roi_sub;
     image_transport::Subscriber _image_sub;
 
-    // functions
+    // callbacks
     void _image_callback(const sensor_msgs::ImageConstPtr& msg);
-    void _roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg) {
+    void _roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg);
+
+    // stores
+    ros::Time _image_timestamp;
+    cv::Mat _image;
+    robotx_msgs::ObjectRegionOfInterestArray _rois;
+
+    // functions
+    int _infer(const cv::Mat image);
+    robotx_msgs::ObjectRegionOfInterestArray _image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image);
 };
-#endif

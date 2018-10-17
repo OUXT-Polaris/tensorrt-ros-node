@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="image_test" name="detector" type="detector" if="$(eval CUDA_ENABLED==true)"/>
+</launch>

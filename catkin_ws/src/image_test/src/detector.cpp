@@ -6,52 +6,26 @@
  * @out: cnn_prediction_node/object_roi (ObjectRegionOfInterestArr)
  */
 // message
-/* #include <robotx_msgs/ObjectRegionOfInterestArray.h> */
 #include <ros/ros.h>
 #include <detector.h>
-/*
-void image_callback(const sensor_msgs::ImageConstPtr& msg) {
-  // 画像を登録
-  cv::Mat image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8)->image;
-  // timestamp
-}
-*/
-
-/*
-void roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg) {
-  ROS_INFO("got roi");
-  robotx_msgs::ObjectRegionOfInterestArray res;
-
-  for (int i = 0; i < msg.object_rois.size(); i++) {
-    robotx_msgs::ObjectRegionOfInterest r = msg.object_rois[i];
-
-    // 返信
-    robotx_msgs::RegionOfInterest2D roi_msg;
-    roi_msg.roi_2d.x_offset = x;
-    roi_msg.roi_2d.y_offset = y;
-    roi_msg.roi_2d.width    = w;
-    roi_msg.roi_2d.height   = h;
-    roi_msg.roi_2d.objectness = 0.9;
-    roi_msg.roi_2d.object_type = 1;
-
-    // 一つだけ追加
-    res.object_rois.push_back(roi_msg);
-  }
-}
-*/
 
 // constructor
 cnn_predictor::cnn_predictor() : _it(_nh) {
   _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
-  _image_sub = _it.subscribe("wam_v/front_camera/front_image_raw",    1, &cnn_predictor::_image_callback, this);
-  _roi_sub   = _nh.subscribe("object_bbox_extractor_node/object_roi", 1, &cnn_predictor::_roi_callback, this);
+  _image_sub = _it.subscribe("publisher/image",    1, &cnn_predictor::_image_callback, this);
+  _roi_sub   = _nh.subscribe("publisher/hogehoge", 1, &cnn_predictor::_roi_callback, this);
   // TODO paramを読み込むようにする
+  ROS_INFO("inited");
+
+  // TODO ブイの情報
+  // TODO tensorrtの初期化
 }
 // destructor
 cnn_predictor::~cnn_predictor() {}
 
 // callbacks
 void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
+  // 画像が入ってきたときのコールバック こちらは頻度が低いことが予想できるので、とりあえず保存しておく
   // 画像のcopy
   cv::Mat image;
   try {
@@ -61,18 +35,57 @@ void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
     return;
   }
   ROS_INFO("got image");
-  // 実行時間の一致確認
-  // publish
-  /* robotx_msgs::ObjectRegionOfInterestArray res; */
-  /* _roi_pub.publish(res); */
-}
-void cnn_predictor::_roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg) {
-  ROS_INFO("got roi");
+
+  // store
+  _image_timestamp = msg->header.stamp;
+  _image = image;
 }
 
+// 今ある画像に対応するroiを選んで、CNNで判定した結果をくっつけて再送信する
+void cnn_predictor::_roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg) {
+  ROS_INFO("got roi");
+  ROS_INFO("objectness: %f", msg.object_rois[0].objectness);
+  // 実行時間の一致確認
+  if(msg.object_rois[0].header.stamp == _image_timestamp) {
+    ROS_INFO("same stamp");
+    robotx_msgs::ObjectRegionOfInterestArray res = _image_recognition(msg, _image);
+    // 判定結果を送信する
+    _roi_pub.publish(res);
+  } else {
+    ROS_INFO("different, rejected");
+  }
+}
+
+robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image) {
+  ROS_INFO("tensorrt");
+  robotx_msgs::ObjectRegionOfInterestArray res;
+  for (int i = 0; i < rois.object_rois.size(); i++) {
+    robotx_msgs::ObjectRegionOfInterest roi = rois.object_rois[i];
+    robotx_msgs::ObjectRegionOfInterest roi_alt;
+    roi_alt.roi_2d = roi.roi_2d;  // TODO これでいける？
+    // 矩形領域の切り出し
+    cv::Rect rect(cv::Point(roi.roi_2d.x_offset, roi.roi_2d.y_offset),
+                  cv::Size(roi.roi_2d.width, roi.roi_2d.height));
+    cv::Mat subimage = image(rect);
+    // 切り出したところについてtensorrtで確率を計算
+    int r = _infer(subimage);
+    roi_alt.object_type.ID = roi_alt.object_type.OTHER;
+    roi_alt.objectness = 1.0;
+
+    res.object_rois.push_back(roi_alt);
+  }
+  return res;
+}
+
+int cnn_predictor::_infer(const cv::Mat image) {
+  // 画像を元に推論する。object typeを返す？
+  // tensorrtのやつ
+  return 0;
+}
 
 
 /* main */
+// http://blog-sk.com/ubuntu/ros_cvbridge/
 
 int main(int argc, char *argv[]) {
   ros::init(argc, argv, "detector");
@@ -81,25 +94,3 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-/*
-// http://blog-sk.com/ubuntu/ros_cvbridge/
-int main(int argc, char** argv) {
-  // 初期化
-	ros::init (argc, argv, "detector");
-	ros::NodeHandle nh;
-
-  //// 受信部分
-  // 1. 画像
-	image_transport::ImageTransport it(nh);
-	image_transport::Subscriber image_sub = it.subscribe("wam_v/front_camera/front_image_raw", 1, image_callback);
-  // 2. ROI
-  ros::Subscriber roi_sub = nh.subscribe("object_bbox_extractor_node/object_roi", 1, image_callback);
-
-  //// 送信部分
-  ros::Publisher roi_pub = nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
-
-  // 実行
-  ros::spin();
-	return 0;
-}
-*/
