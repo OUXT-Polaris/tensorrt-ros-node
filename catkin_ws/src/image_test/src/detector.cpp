@@ -8,6 +8,12 @@
 // message
 #include <ros/ros.h>
 #include <detector.h>
+#include <string> 
+
+extern void setup(std::string planFilename, std::string inputName, std::string outputName);
+extern void destroy(void);
+extern void infer(cv::Mat image);
+extern void test(void);
 
 // constructor
 cnn_predictor::cnn_predictor() : _it(_nh) {
@@ -16,9 +22,10 @@ cnn_predictor::cnn_predictor() : _it(_nh) {
   _roi_sub   = _nh.subscribe("publisher/hogehoge", 1, &cnn_predictor::_roi_callback, this);
   // TODO paramを読み込むようにする
   ROS_INFO("inited");
-
   // TODO ブイの情報
   // TODO tensorrtの初期化
+  setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan", 
+        "images", "resnet_v1_50/SpatialSqueeze");
 }
 // destructor
 cnn_predictor::~cnn_predictor() {}
