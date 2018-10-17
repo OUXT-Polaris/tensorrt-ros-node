@@ -4,6 +4,7 @@
  * @in: wam_v/front_camera/front_image_raw (Image)
  * @in: object_bbox_extractor_node/object_roi (OROIA)
  * @out: cnn_prediction_node/object_roi (ObjectRegionOfInterestArr)
+ * ref: https://ipx.hatenablog.com/entry/2018/05/21/102659
  */
 // message
 #include <ros/ros.h>
@@ -23,12 +24,18 @@ cnn_predictor::cnn_predictor() : _it(_nh) {
   // TODO paramを読み込むようにする
   ROS_INFO("inited");
   // TODO ブイの情報
-  // TODO tensorrtの初期化
+  //
+  // 時刻初期化
+  _image_timestamp = ros::Time::now();
+  
+  // tensorrt 初期化
   setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan", 
         "images", "resnet_v1_50/SpatialSqueeze");
 }
 // destructor
-cnn_predictor::~cnn_predictor() {}
+cnn_predictor::~cnn_predictor() {
+  destroy();
+}
 
 // callbacks
 void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
@@ -41,7 +48,7 @@ void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
   }
-  ROS_INFO("got image");
+  ROS_INFO("got image %d, %d", image.rows, image.cols);
 
   // store
   _image_timestamp = msg->header.stamp;
@@ -73,6 +80,7 @@ robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const
     // 矩形領域の切り出し
     cv::Rect rect(cv::Point(roi.roi_2d.x_offset, roi.roi_2d.y_offset),
                   cv::Size(roi.roi_2d.width, roi.roi_2d.height));
+    ROS_INFO("size: %d,%d,%d,%d  full:%d,%d", roi.roi_2d.x_offset, roi.roi_2d.y_offset, roi.roi_2d.width, roi.roi_2d.height, image.rows, image.cols);
     cv::Mat subimage = image(rect);
     // 切り出したところについてtensorrtで確率を計算
     int r = _infer(subimage);
@@ -87,6 +95,7 @@ robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const
 int cnn_predictor::_infer(const cv::Mat image) {
   // 画像を元に推論する。object typeを返す？
   // tensorrtのやつ
+  infer(image);
   return 0;
 }
 

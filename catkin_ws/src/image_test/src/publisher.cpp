@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 
   // 画像生成
 	cv::Mat image;
-  image = cv::imread("/catkin_ws/src/hoge/data/00.png", 1);
+  image = cv::imread("/home/ubuntu/tensorrt-ros-node/catkin_ws/src/hoge/data/00.png", 1);
   if(image.empty()) {
     ROS_INFO("failed to load image");
     return -1;
@@ -35,12 +35,12 @@ int main(int argc, char** argv) {
   // roi生成
   robotx_msgs::ObjectRegionOfInterestArray array;
   robotx_msgs::ObjectRegionOfInterest roi;
-  roi.roi_2d.width = 50;
-  roi.roi_2d.height = 40;
-  roi.roi_2d.x_offset = 11;
-  roi.roi_2d.y_offset = 12;
-  roi.objectness = 0.9;
-  roi.object_type.ID = roi.object_type.GREEN_BUOY;
+  roi.roi_2d.width = 42;
+  roi.roi_2d.height = 95;
+  roi.roi_2d.x_offset = 0;
+  roi.roi_2d.y_offset = 0;
+  /* roi.objectness = 0.9; */
+  /* roi.object_type.ID = roi.object_type.GREEN_BUOY; */
   array.object_rois.push_back(roi);
 
 	ros::Rate looprate(0.1);   // capture image at 10Hz

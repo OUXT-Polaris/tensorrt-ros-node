@@ -12,7 +12,6 @@
 #include <algorithm>
 #include <NvInfer.h>
 
-
 void cvImageToTensor(const cv::Mat & image, float *tensor, nvinfer1::Dims dimensions)
 {
   const size_t channels = dimensions.d[0];

@@ -1,3 +1,6 @@
+#ifndef CNN_DETECTOR_H
+#define CNN_DETECTOR_H
+
 #include <robotx_msgs/ObjectRegionOfInterestArray.h>
 #include <robotx_msgs/ObjectRegionOfInterest.h>
 #include <ros/ros.h>
@@ -33,3 +36,5 @@ class cnn_predictor {
     int _infer(const cv::Mat image);
     robotx_msgs::ObjectRegionOfInterestArray _image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image);
 };
+
+#endif

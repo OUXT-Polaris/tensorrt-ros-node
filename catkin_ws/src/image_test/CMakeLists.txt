@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(image_test)
 
+# debug
+# SET(CMAKE_VERBOSE_MAKEFILE ON)
+
 # for g++
-add_compile_options(-std=c++11)
+# add_compile_options(-std=c++11)
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 # for cuda
-set(CUDA_NVCC_FLAGS --std=c++11)
+set(CUDA_NVCC_FLAGS -std c++11)
 set(CMAKE_CXX_STANDARD 11)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -43,7 +47,7 @@ add_dependencies(publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED
 target_link_libraries(publisher ${catkin_LIBRARIES})
 
 #cuda_add_executable(infer src/infer.cu)  # cuda
-cuda_add_executable(detector src/detector.cpp src/infer.cu)  # main
+cuda_add_executable(detector src/infer.cu src/detector.cpp)  # main
 add_dependencies(detector ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
 target_link_libraries(detector ${catkin_LIBRARIES} ${CUDA_LIBRARIES} nvinfer nvparsers)
 
