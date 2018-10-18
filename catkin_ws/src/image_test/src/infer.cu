@@ -31,9 +31,10 @@ size_t numInput, numOutput;
 float *inputDataHost, *outputDataHost;
 float *inputDataDevice, *outputDataDevice;
 
-void setup(std::string planFilename, std::string inputName, std::string outputName) {
+/* void setup(std::string planFilename, std::string inputName, std::string outputName) { */
+void setup() {
   ROS_INFO("setup");
-  std::ifstream planFile(planFilename);
+  std::ifstream planFile("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan");
   if(!planFile.is_open()) {
     ROS_INFO("cannot get plan file");
     is_initialized = false;
@@ -47,12 +48,13 @@ void setup(std::string planFilename, std::string inputName, std::string outputNa
     context = engine->createExecutionContext();
     ROS_INFO("load setup finished");
 
-    inputBindingIndex = engine->getBindingIndex(inputName.c_str());
-    outputBindingIndex = engine->getBindingIndex(outputName.c_str());
+    inputBindingIndex = engine->getBindingIndex("images");
+    outputBindingIndex = engine->getBindingIndex("resnet_v1_50/SpatialSqueeze");
     inputDims = engine->getBindingDimensions(inputBindingIndex);
     outputDims = engine->getBindingDimensions(outputBindingIndex);
     inputHeight = inputDims.d[1];
     inputWidth = inputDims.d[2];
+    ROS_INFO("input: %d, %d", inputHeight, inputWidth);
 
     numInput = numTensorElements(inputDims);
     numOutput = numTensorElements(outputDims);
@@ -82,9 +84,10 @@ void destroy(void) {
   is_initialized = false;
 }
 
-float* infer(cv::Mat image) {
+void infer(cv::Mat image, float* out) {
   // cvの画像からcnnを走らせる
   ROS_INFO("get");
+  cv::resize(image, image, cv::Size(inputWidth, inputHeight));
   cvImageToTensor(image, inputDataHost, inputDims);
   preprocessVgg(inputDataHost, inputDims);
   bindings[inputBindingIndex] = (void*)inputDataDevice;
@@ -95,7 +98,9 @@ float* infer(cv::Mat image) {
   cudaMemcpy(outputDataHost, outputDataDevice, numOutput * sizeof(float), cudaMemcpyDeviceToHost);
   // output
   ROS_INFO("%f %f %f %f", outputDataHost[0], outputDataHost[1], outputDataHost[2], outputDataHost[3]);
-  return outputDataHost;
+  for (int i = 0; i < 4; i++) {
+    out[i] = outputDataHost[i];
+  }
 }
 
 void test(void) {

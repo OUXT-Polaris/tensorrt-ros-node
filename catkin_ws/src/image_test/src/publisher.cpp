@@ -8,48 +8,50 @@
 #include <robotx_msgs/ObjectRegionOfInterest.h>
 #include <robotx_msgs/ObjectType.h>
 
-void cb(custom_messages::Num res){
-  /* ROS_INFO("%d", res.num); */
+void publish_image_and_roi(std::string filename, ros::Publisher roi_pub, image_transport::Publisher image_pub) {
+  // 画像生成
+	cv::Mat image;
+  image = cv::imread(filename, 1);
+  if(image.empty()) {
+    ROS_INFO("failed to load image");
+  }else{
+    ROS_INFO("loaded");
+  }
+  sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+
+  ROS_INFO("publishing %d %d", image.rows, image.cols);
+
+  // roi生成 画像全体をroiにする
+  robotx_msgs::ObjectRegionOfInterestArray array;
+  robotx_msgs::ObjectRegionOfInterest roi;
+  roi.roi_2d.width = image.cols;
+  roi.roi_2d.height = image.rows;
+  roi.roi_2d.x_offset = 0;
+  roi.roi_2d.y_offset = 0;
+  array.object_rois.push_back(roi);
+
+  roi_pub.publish(array);
+  image_pub.publish(msg);
 }
+
 // http://blog-sk.com/ubuntu/ros_cvbridge/
 int main(int argc, char** argv) {
 	ros::init (argc, argv, "publisher");
 	ros::NodeHandle nh("~");
   ROS_INFO("%s", ros::this_node::getName().c_str());
 
+  // parameter
+  std::string filename = "";
+  nh.getParam("filename", filename);
+
   ros::Publisher roi_pub = nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("hogehoge", 1);
 	image_transport::ImageTransport it(nh);
 	image_transport::Publisher image_pub = it.advertise("image", 1);
 
-  // 画像生成
-	cv::Mat image;
-  image = cv::imread("/home/ubuntu/tensorrt-ros-node/catkin_ws/src/hoge/data/00.png", 1);
-  if(image.empty()) {
-    ROS_INFO("failed to load image");
-    return -1;
-  }else{
-    ROS_INFO("loaded");
-  }
-  sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
-
-  // roi生成
-  robotx_msgs::ObjectRegionOfInterestArray array;
-  robotx_msgs::ObjectRegionOfInterest roi;
-  roi.roi_2d.width = 42;
-  roi.roi_2d.height = 95;
-  roi.roi_2d.x_offset = 0;
-  roi.roi_2d.y_offset = 0;
-  /* roi.objectness = 0.9; */
-  /* roi.object_type.ID = roi.object_type.GREEN_BUOY; */
-  array.object_rois.push_back(roi);
-
-	ros::Rate looprate(0.1);   // capture image at 10Hz
+	ros::Rate looprate(0.5);   // capture image at 10Hz
 	while(ros::ok()) {
-    ROS_INFO("published!");
-    roi_pub.publish(array);
-		image_pub.publish(msg);
-    ROS_INFO("%f", array.object_rois[0].objectness);
 		ros::spinOnce();
+    publish_image_and_roi(filename, roi_pub, image_pub);
 		looprate.sleep();
 	}
 	return 0;

@@ -28,12 +28,17 @@ class cnn_predictor {
     void _roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg);
 
     // stores
+    bool _image_stored;
+    bool _rois_stored;
     ros::Time _image_timestamp;
+    ros::Time _rois_timestamp;
     cv::Mat _image;
     robotx_msgs::ObjectRegionOfInterestArray _rois;
 
+    // map
+    /* robotx_msgs::ObjectType map[4]; */
+
     // functions
-    robotx_msgs::ObjectType _infer(const cv::Mat image);
     robotx_msgs::ObjectRegionOfInterestArray _image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image);
 };
 
