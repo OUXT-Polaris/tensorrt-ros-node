@@ -17,9 +17,19 @@ extern void destroy(void);
 extern void infer(cv::Mat image, float* out);
 extern void test(void);
 
+typedef message_filters::sync_policies::ApproximateTime<> SyncPolicy;
+
 // constructor
 cnn_predictor::cnn_predictor() : _it(_nh) {
   _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
+
+  // filterを使う場合
+  /* message_filters::Subscriber<Image> _image_sub(nh, "publisher/image", 1); */
+  /* image_transport::SubscriberFilter _image_sub(_it, "publisher/image", 1); */
+  /* message_filters::Subscriber<robotx_msgs::ObjectRegionOfInterestArray> _roi_sub(_nh, "publisher/hogehoge", 1); */
+  /* TimeSynchronizer<Image, CameraInfo> _sync(_image_sub, _roi_sub, 10); */
+  /* sync.registerCallback(boost::bind(&callback, _1, _2)); */
+
   _image_sub = _it.subscribe("publisher/image",    1, &cnn_predictor::_image_callback, this);
   _roi_sub   = _nh.subscribe("publisher/hogehoge", 1, &cnn_predictor::_roi_callback, this);
   // TODO paramを読み込むようにする
