@@ -11,36 +11,49 @@
 #include <detector.h>
 #include <string>
 
-/* extern void setup(std::string planFilename, std::string inputName, std::string outputName); */
-extern void setup();
+extern void setup(std::string planFilename, std::string inputName, std::string outputName, bool _use_mappedMemory);
 extern void destroy(void);
 extern void infer(cv::Mat image, float* out);
 extern void test(void);
 
-typedef message_filters::sync_policies::ApproximateTime<> SyncPolicy;
-
 // constructor
-cnn_predictor::cnn_predictor() : _it(_nh) {
-  _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
+cnn_predictor::cnn_predictor() :
+  _it(_nh),
+  _image_sub(_it, "publisher/image", 1),
+  /* _image_sub2(_it, "publisher/hogehoge", 1), */
+  _roi_sub(_nh,   "publisher/hogehoge", 1),
+  _sync(SyncPolicy(10), _image_sub, _roi_sub)  // TODO what is 10?
+{
+    // publisher
+    _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
 
-  // filterを使う場合
-  /* message_filters::Subscriber<Image> _image_sub(nh, "publisher/image", 1); */
-  /* image_transport::SubscriberFilter _image_sub(_it, "publisher/image", 1); */
-  /* message_filters::Subscriber<robotx_msgs::ObjectRegionOfInterestArray> _roi_sub(_nh, "publisher/hogehoge", 1); */
-  /* TimeSynchronizer<Image, CameraInfo> _sync(_image_sub, _roi_sub, 10); */
-  /* sync.registerCallback(boost::bind(&callback, _1, _2)); */
+    /* subscriber callbacks
+     * message_filterについては
+     * https://garaemon.github.io/blog/ros/2014/10/19/message-filters.html
+     * https://answers.ros.org/question/9705/synchronizer-and-image_transportsubscriber/  itと組み合わせる
+     * http://robonchu.hatenablog.com/entry/2017/06/11/121000   approximatetimeについて
+     * 参照
+     */
+    _sync.registerCallback(boost::bind(&cnn_predictor::callback, this, _1, _2));  // 登録
 
-  _image_sub = _it.subscribe("publisher/image",    1, &cnn_predictor::_image_callback, this);
-  _roi_sub   = _nh.subscribe("publisher/hogehoge", 1, &cnn_predictor::_roi_callback, this);
-  // TODO paramを読み込むようにする
-  ROS_INFO("inited");
-  _image_stored = false;
-  _rois_stored = false;
-  // tensorrt 初期化
-  /* setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan", */
-        /* "images", "resnet_v1_50/SpatialSqueeze"); */
-  setup();
-  // TODO ブイの情報 mapper
+    // filterを使う場合
+    /* message_filters::Subscriber<Image> _image_sub(nh, "publisher/image", 1); */
+    /* image_transport::SubscriberFilter _image_sub(_it, "publisher/image", 1); */
+    /* message_filters::Subscriber<robotx_msgs::ObjectRegionOfInterestArray> _roi_sub(_nh, "publisher/hogehoge", 1); */
+    /*
+    // 元々
+    _image_sub = _it.subscribe("publisher/image",    1, &cnn_predictor::_image_callback, this);
+    _roi_sub   = _nh.subscribe("publisher/hogehoge", 1, &cnn_predictor::_roi_callback, this);
+    _image_stored = false;
+    _rois_stored = false;
+    */
+    // TODO paramを読み込むようにする
+    ROS_INFO("inited");
+
+    // tensorrt 初期化
+    setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan",
+        "images", "resnet_v1_50/SpatialSqueeze", false);
+    // TODO ブイの情報 mapper
 }
 // destructor
 cnn_predictor::~cnn_predictor() {
@@ -48,6 +61,13 @@ cnn_predictor::~cnn_predictor() {
 }
 
 // callbacks
+void cnn_predictor::callback(
+    const sensor_msgs::ImageConstPtr& image_msg,
+    const robotx_msgs::ObjectRegionOfInterestArrayConstPtr& rois_msg) {
+  // 両方のが揃った時
+  ROS_INFO("callbacked!");
+}
+
 void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
   // 画像が入ってきたときのコールバック こちらは頻度が低いことが予想できるので、とりあえず保存しておく
   // 画像のcopy
@@ -65,7 +85,7 @@ void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
   if(!_image_stored) {
     _image_timestamp = msg->header.stamp;
     _image = image;
-  } else if () {
+  } else {
     // タイムスタンプが古い時 更新する
 
   }
@@ -119,7 +139,7 @@ robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const
       }
     }
     switch(index) {
-      case 0: 
+      case 0:
         roi_alt.object_type.ID = roi_alt.object_type.GREEN_BUOY;
         break;
       case 1:

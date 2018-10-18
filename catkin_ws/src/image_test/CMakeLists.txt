@@ -24,7 +24,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(OpenCV REQUIRED)
-find_package(CUDA REQUIRED)
+find_package(Boost REQUIRED)
+# find_package(CUDA REQUIRED)
+find_package(CUDA)  # あればinfer.cuをビルド、ない場合は下で分岐してinfer.cppを使う
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -36,21 +38,44 @@ catkin_package(
 ###########
 ## Build ##
 ###########
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${OpenCV_INCLUDE_DIRS}
-  ${CUDA_INCLUDE_DIRS}
-)
+if(CUDA_FOUND)
 
-add_executable(publisher src/publisher.cpp)
-add_dependencies(publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
-target_link_libraries(publisher ${catkin_LIBRARIES})
+  include_directories(
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+    ${CUDA_INCLUDE_DIRS}
+  )
 
-#cuda_add_executable(infer src/infer.cu)  # cuda
-cuda_add_executable(detector src/infer.cu src/detector.cpp)  # main
-add_dependencies(detector ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
-target_link_libraries(detector ${catkin_LIBRARIES} ${CUDA_LIBRARIES} nvinfer nvparsers)
+  add_executable(publisher src/publisher.cpp)
+  add_dependencies(publisher
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
+  target_link_libraries(publisher ${catkin_LIBRARIES})
+
+  cuda_add_executable(detector src/infer.cu src/detector.cpp)  # main
+  add_dependencies(detector
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
+  target_link_libraries(detector ${catkin_LIBRARIES} ${CUDA_LIBRARIES} ${Boost_LIBRARIES} nvinfer nvparsers)
+
+else()
+
+  include_directories(
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+  )
+
+  add_executable(publisher src/publisher.cpp)
+  add_dependencies(publisher
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
+  target_link_libraries(publisher ${catkin_LIBRARIES})
+
+  add_executable(detector src/infer.cpp src/detector.cpp)  # main
+  add_dependencies(detector
+    ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${catkin_EXPORTED_LIBRARIES})
+  target_link_libraries(detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+endif()
 
 #############
 ## Install ##
