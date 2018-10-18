@@ -7,10 +7,11 @@
  * ref: https://ipx.hatenablog.com/entry/2018/05/21/102659
  */
 // message
-#include <ros/ros.h>
 #include <detector.h>
+#include <ros/ros.h>
 #include <string>
 
+// infer.cu(CUDA使用時), infer.cpp(CUDA使わない時)の関数を呼び出す
 extern void setup(std::string planFilename, std::string inputName, std::string outputName, bool _use_mappedMemory);
 extern void destroy(void);
 extern void infer(cv::Mat image, float* out);
@@ -20,9 +21,8 @@ extern void test(void);
 cnn_predictor::cnn_predictor() :
   _it(_nh),
   _image_sub(_it, "publisher/image", 1),
-  /* _image_sub2(_it, "publisher/hogehoge", 1), */
   _roi_sub(_nh,   "publisher/hogehoge", 1),
-  _sync(SyncPolicy(10), _image_sub, _roi_sub)  // TODO what is 10?
+  _sync(SyncPolicy(1), _image_sub, _roi_sub)  // TODO what is 10?
 {
     // publisher
     _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
@@ -34,27 +34,16 @@ cnn_predictor::cnn_predictor() :
      * http://robonchu.hatenablog.com/entry/2017/06/11/121000   approximatetimeについて
      * 参照
      */
-    _sync.registerCallback(boost::bind(&cnn_predictor::callback, this, _1, _2));  // 登録
-
-    // filterを使う場合
-    /* message_filters::Subscriber<Image> _image_sub(nh, "publisher/image", 1); */
-    /* image_transport::SubscriberFilter _image_sub(_it, "publisher/image", 1); */
-    /* message_filters::Subscriber<robotx_msgs::ObjectRegionOfInterestArray> _roi_sub(_nh, "publisher/hogehoge", 1); */
-    /*
-    // 元々
-    _image_sub = _it.subscribe("publisher/image",    1, &cnn_predictor::_image_callback, this);
-    _roi_sub   = _nh.subscribe("publisher/hogehoge", 1, &cnn_predictor::_roi_callback, this);
-    _image_stored = false;
-    _rois_stored = false;
-    */
-    // TODO paramを読み込むようにする
-    ROS_INFO("inited");
+    _sync.registerCallback(boost::bind(&cnn_predictor::callback, this, _1, _2));
 
     // tensorrt 初期化
     setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan",
         "images", "resnet_v1_50/SpatialSqueeze", false);
-    // TODO ブイの情報 mapper
+    ROS_INFO("inited");
+
+    // TODO paramを読み込むようにする
 }
+
 // destructor
 cnn_predictor::~cnn_predictor() {
   destroy();
@@ -66,49 +55,22 @@ void cnn_predictor::callback(
     const robotx_msgs::ObjectRegionOfInterestArrayConstPtr& rois_msg) {
   // 両方のが揃った時
   ROS_INFO("callbacked!");
-}
 
-void cnn_predictor::_image_callback(const sensor_msgs::ImageConstPtr& msg) {
-  // 画像が入ってきたときのコールバック こちらは頻度が低いことが予想できるので、とりあえず保存しておく
-  // 画像のcopy
+  // 画像 image_msg
   cv::Mat image;
   try {
-    image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8)->image;
+    image = cv_bridge::toCvCopy(*image_msg, sensor_msgs::image_encodings::BGR8)->image;
     cv::cvtColor(image, image, cv::COLOR_BGR2RGB, 3);
   } catch (cv_bridge::Exception& e) {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
   }
   ROS_INFO("got image %d, %d", image.rows, image.cols);
+  ROS_INFO("objectness: %f", rois_msg->object_rois[0].objectness);
 
-  // store
-  if(!_image_stored) {
-    _image_timestamp = msg->header.stamp;
-    _image = image;
-  } else {
-    // タイムスタンプが古い時 更新する
-
-  }
-}
-
-// 今ある画像に対応するroiを選んで、CNNで判定した結果をくっつけて再送信する
-void cnn_predictor::_roi_callback(const robotx_msgs::ObjectRegionOfInterestArray msg) {
-  ROS_INFO("got roi");
-  ROS_INFO("objectness: %f", msg.object_rois[0].objectness);
-  // 実行時間の一致確認
-  if(msg.object_rois[0].header.stamp == _image_timestamp) {
-    ROS_INFO("same stamp");
-    _process(msg, _image);
-  } else {
-    ROS_INFO("different, rejected");
-  }
-}
-
-void cnn_predictor::_process(const robotx_msgs::ObjectRegionOfInterestArray msg, const cv::Mat image) {
-  robotx_msgs::ObjectRegionOfInterestArray res = _image_recognition(msg, _image);
+  robotx_msgs::ObjectRegionOfInterestArray res = _image_recognition(*rois_msg, image);
   // 判定結果を送信する
   _roi_pub.publish(res);
-
 }
 
 // 画像認識: 基本的にはroisのアップデートをする感じ (rois, image) -> (rois)

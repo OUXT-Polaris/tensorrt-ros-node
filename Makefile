@@ -18,7 +18,7 @@ run_slave:
 		--env ROS_MASTER_URI=http://master:11311 \
 		-v ~/src/OUXT/docker-test/node-making/catkin_ws:/catkin_ws \
 		ros:ros-node-making \
-		/bin/bash -c ". devel/setup.bash; rosrun image_test publisher"
+		/bin/bash -c ". devel/setup.bash; rosrun image_test publisher _filename:='/catkin_ws/src/hoge/data/g0.png'"
 		# /bin/bash -c ". devel/setup.bash; rosmsg show hoge/Num"
 
 run_listener:
