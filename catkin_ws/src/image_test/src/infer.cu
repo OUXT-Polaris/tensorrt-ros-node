@@ -82,7 +82,7 @@ void destroy(void) {
   is_initialized = false;
 }
 
-void infer(cv::Mat image) {
+float* infer(cv::Mat image) {
   // cvの画像からcnnを走らせる
   ROS_INFO("get");
   cvImageToTensor(image, inputDataHost, inputDims);
@@ -95,6 +95,7 @@ void infer(cv::Mat image) {
   cudaMemcpy(outputDataHost, outputDataDevice, numOutput * sizeof(float), cudaMemcpyDeviceToHost);
   // output
   ROS_INFO("%f %f %f %f", outputDataHost[0], outputDataHost[1], outputDataHost[2], outputDataHost[3]);
+  return outputDataHost;
 }
 
 void test(void) {

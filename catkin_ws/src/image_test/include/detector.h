@@ -33,7 +33,7 @@ class cnn_predictor {
     robotx_msgs::ObjectRegionOfInterestArray _rois;
 
     // functions
-    int _infer(const cv::Mat image);
+    robotx_msgs::ObjectType _infer(const cv::Mat image);
     robotx_msgs::ObjectRegionOfInterestArray _image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image);
 };
 

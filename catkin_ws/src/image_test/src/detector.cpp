@@ -9,7 +9,7 @@
 // message
 #include <ros/ros.h>
 #include <detector.h>
-#include <string> 
+#include <string>
 
 extern void setup(std::string planFilename, std::string inputName, std::string outputName);
 extern void destroy(void);
@@ -24,12 +24,10 @@ cnn_predictor::cnn_predictor() : _it(_nh) {
   // TODO paramを読み込むようにする
   ROS_INFO("inited");
   // TODO ブイの情報
-  //
   // 時刻初期化
   _image_timestamp = ros::Time::now();
-  
   // tensorrt 初期化
-  setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan", 
+  setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan",
         "images", "resnet_v1_50/SpatialSqueeze");
 }
 // destructor
@@ -70,6 +68,7 @@ void cnn_predictor::_roi_callback(const robotx_msgs::ObjectRegionOfInterestArray
   }
 }
 
+// 画像認識: 基本的にはroisのアップデートをする感じ (rois, image) -> (rois)
 robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image) {
   ROS_INFO("tensorrt");
   robotx_msgs::ObjectRegionOfInterestArray res;
@@ -92,11 +91,13 @@ robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const
   return res;
 }
 
-int cnn_predictor::_infer(const cv::Mat image) {
-  // 画像を元に推論する。object typeを返す？
-  // tensorrtのやつ
-  infer(image);
-  return 0;
+// tensorrtのラッパー
+robotx_msgs::ObjectType cnn_predictor::_infer(const cv::Mat image) {
+  float* result = infer(image);
+  // ObjectTypeを返す
+  robotx_msgs::ObjectType object;
+  object.ID = object.OTHER;
+  return object;
 }
 
 

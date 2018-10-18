@@ -8,6 +8,7 @@ project(image_test)
 # add_compile_options(-std=c++11)
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 # for cuda
+# https://github.com/gchanan/TemporalConvolutionTBC/issues/2 stdのエラーがでる。謎。
 set(CUDA_NVCC_FLAGS -std c++11)
 set(CMAKE_CXX_STANDARD 11)
 
