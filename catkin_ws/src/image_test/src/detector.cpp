@@ -20,28 +20,27 @@ extern void test(void);
 // constructor
 cnn_predictor::cnn_predictor() :
   _it(_nh),
-  _image_sub(_it, "publisher/image", 1),
-  _roi_sub(_nh,   "publisher/hogehoge", 1),
-  _sync(SyncPolicy(1), _image_sub, _roi_sub)  // TODO what is 10?
+  _params(),
+  _image_sub(_it, _params.image_topic, 1),
+  _roi_sub(_nh,   _params.roi_topic, 1),
+  _sync(SyncPolicy(1), _image_sub, _roi_sub)
 {
-    // publisher
-    _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
+  // publisher
+  _roi_pub   = _nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("cnn_prediction_node/object_roi", 1);
 
-    /* subscriber callbacks
-     * message_filterについては
-     * https://garaemon.github.io/blog/ros/2014/10/19/message-filters.html
-     * https://answers.ros.org/question/9705/synchronizer-and-image_transportsubscriber/  itと組み合わせる
-     * http://robonchu.hatenablog.com/entry/2017/06/11/121000   approximatetimeについて
-     * 参照
-     */
-    _sync.registerCallback(boost::bind(&cnn_predictor::callback, this, _1, _2));
+  /* subscriber callbacks
+   * message_filterについては
+   * https://garaemon.github.io/blog/ros/2014/10/19/message-filters.html
+   * https://answers.ros.org/question/9705/synchronizer-and-image_transportsubscriber/  itと組み合わせる
+   * http://robonchu.hatenablog.com/entry/2017/06/11/121000   approximatetimeについて
+   * 参照
+   */
+  _sync.registerCallback(boost::bind(&cnn_predictor::callback, this, _1, _2));
 
-    // tensorrt 初期化
-    setup("/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan",
-        "images", "resnet_v1_50/SpatialSqueeze", false);
-    ROS_INFO("inited");
+  // tensorrt 初期化
+  setup(_params.model_filename, _params.model_inputName, _params.model_outputName, _params.use_mapped_memory);
 
-    // TODO paramを読み込むようにする
+  ROS_INFO("detector initialized %d, %s", _params.model_outputNum, _params.image_topic.c_str());
 }
 
 // destructor
@@ -75,17 +74,23 @@ void cnn_predictor::callback(
 
 // 画像認識: 基本的にはroisのアップデートをする感じ (rois, image) -> (rois)
 robotx_msgs::ObjectRegionOfInterestArray cnn_predictor::_image_recognition(const robotx_msgs::ObjectRegionOfInterestArray rois, const cv::Mat image) {
-  ROS_INFO("tensorrt recognition for roi #%d", rois.object_rois.size());
   robotx_msgs::ObjectRegionOfInterestArray res;
   for (int i = 0; i < rois.object_rois.size(); i++) {
     robotx_msgs::ObjectRegionOfInterest roi = rois.object_rois[i];
     robotx_msgs::ObjectRegionOfInterest roi_alt;
     roi_alt.roi_2d = roi.roi_2d;  // TODO これでいける？
     // 矩形領域の切り出し
-    ROS_INFO("h:%d, w:%d, x:%d, y:%d, H:%d, W:%d", roi.roi_2d.height, roi.roi_2d.width, roi.roi_2d.x_offset, roi.roi_2d.y_offset, image.rows, image.cols);
-    cv::Rect rect(cv::Point(roi.roi_2d.x_offset, roi.roi_2d.y_offset),
-                  cv::Size(roi.roi_2d.width, roi.roi_2d.height));
-    /* ROS_INFO("size: %d,%d,%d,%d  full:%d,%d", roi.roi_2d.x_offset, roi.roi_2d.y_offset, roi.roi_2d.width, roi.roi_2d.height, image.rows, image.cols); */
+    int roi_h = roi.roi_2d.height,
+        roi_w = roi.roi_2d.width,
+        roi_x = roi.roi_2d.x_offset,
+        roi_y = roi.roi_2d.y_offset,
+        img_h = image.rows,
+        img_w = image.cols;
+    ROS_INFO("h:%d, w:%d, x:%d, y:%d, H:%d, W:%d", roi_h, roi_w, roi_x, roi_y, img_h, img_w);
+    // TODO サイズがあってない時の例外処理
+    /* if (roi_x >= 0 && roi_y >= 0 && roi_x + roi_w <= img_w && roi_y + roi_h <= img_h) { */
+    /* } */
+    cv::Rect rect(cv::Point(roi_x, roi_y), cv::Size(roi_w, roi_h));
     cv::Mat subimage = image(rect);
     // 切り出した部分をCNNのinputサイズに合わせる
     // 切り出したところについてtensorrtで確率を計算

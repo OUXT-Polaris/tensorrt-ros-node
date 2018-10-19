@@ -1,3 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <launch>
-  <node pkg="image_test" name="detector" type="detector" if="$(eval CUDA_ENABLED==true)"/>
+  <arg name="CUDA_ENABLED" default="false"/>
+  <arg name="imagefile" default="/catkin_ws/src/hoge/data/g0.png"/>
+
+  <rosparam command="load" file="$(find image_test)/config/detector.yaml" ns="detector"/>
+  <node pkg="image_test" name="detector" type="detector" if="$(eval CUDA_ENABLED==true)" output="screen">
+  </node>
+
+  <node pkg="image_test" name="publisher" type="publisher" output="screen">
+    <param name="filename" value="$(arg imagefile)"/>
+  </node>
 </launch>

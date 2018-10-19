@@ -21,8 +21,33 @@ class cnn_predictor {
   public:
     cnn_predictor();
     ~cnn_predictor();
+    // callback
     void callback(const sensor_msgs::ImageConstPtr& image_msg,
                   const robotx_msgs::ObjectRegionOfInterestArrayConstPtr& rois_msg);
+
+    // rosparam
+    struct parameters {
+      std::string roi_topic;
+      std::string image_topic;
+      std::string model_filename;
+      std::string model_inputName;
+      std::string model_outputName;
+      int model_outputNum;
+      bool use_mapped_memory;
+
+      parameters() {
+        /* model_outputNum = 0; */
+        ros::param::param<std::string>(ros::this_node::getName() + "/roi_topic", roi_topic, "publisher/hogehoge");
+        ros::param::param<std::string>(ros::this_node::getName() + "/image_topic", image_topic, "publisher/image");
+        ros::param::param<std::string>(ros::this_node::getName() + "/model_filename", model_filename, "/home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan");
+        ros::param::param<std::string>(ros::this_node::getName() + "/model_inputName", model_inputName, "images");
+        ros::param::param<std::string>(ros::this_node::getName() + "/model_outputName", model_outputName, "resnet_v1_50/SpatialSqueeze");
+        ros::param::param<int>(ros::this_node::getName() + "/model_outputNum", model_outputNum, 4);
+        ros::param::param<bool>(ros::this_node::getName() + "/use_mapped_memory", use_mapped_memory, false);
+      }
+    };
+    // rosparam
+    const struct parameters _params;
 
   private:
     ros::NodeHandle _nh;

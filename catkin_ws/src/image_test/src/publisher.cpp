@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
   // parameter
   std::string filename = "";
   nh.getParam("filename", filename);
+  ROS_INFO("filename: %s", filename.c_str());
 
   ros::Publisher roi_pub = nh.advertise<robotx_msgs::ObjectRegionOfInterestArray>("hogehoge", 1);
 	image_transport::ImageTransport it(nh);

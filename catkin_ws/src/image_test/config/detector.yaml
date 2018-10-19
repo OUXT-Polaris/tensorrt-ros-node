@@ -1,0 +1,7 @@
+roi_topic: /publisher/hogehoge
+image_topic: /publisher/image
+model_filename: /home/ubuntu/tensorrt/resnet_test/resnet_v1_50_finetuned_4class_altered_model.plan
+model_inputName: images
+model_outputName: resnet_v1_50/SpatialSqueeze
+model_outputNum: 4
+use_mapped_memory: false
